@@ -1,24 +1,26 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const entries = [...document.querySelectorAll('[data-entry]')];
-const chapters = [...document.querySelectorAll('[data-chapter]')];
-const index = entries.map(el => ({el,text:el.textContent.toLowerCase()}));
+const textSections = [...document.querySelectorAll('[data-text-section]')];
+const groups = [...document.querySelectorAll('[data-search-group]')];
+const index = [...entries.map(el=>({el,kind:'entry'})),...textSections.map(el=>({el,kind:'section'}))].map(item=>({...item,text:(item.el.textContent+' '+(item.el.closest('[data-chapter]')?.querySelector('h2')?.textContent||'')).toLowerCase()}));
 let toastTimer, searchTimer;
 function toast(text){ $('toast').textContent=text; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,2400); }
 function search(){
   const q=$('search').value.trim().toLowerCase(),terms=q.split(/\s+/).filter(Boolean);
-  let shown=0;
-  for(const item of index){const match=terms.every(t=>item.text.includes(t));item.el.hidden=!match;if(match)shown++;}
-  for(const section of chapters)section.hidden=![...section.querySelectorAll('[data-entry]')].some(el=>!el.hidden);
-  $('directory').hidden=!!q; $('longforms').hidden=!!q; $('search-status').hidden=!q; $('clear-search').hidden=!q;
-  $('search-status').textContent=`「${$('search').value.trim()}」：${shown} 條相關建議`;
-  $('empty').hidden=!q||shown>0;
+  let shown=0,other=0;
+  for(const item of index){const match=terms.every(t=>item.text.includes(t));item.el.hidden=!match;if(match){if(item.kind==='entry')shown++;else other++;}}
+  for(const section of groups)section.hidden=![...section.querySelectorAll('[data-entry],[data-text-section]')].some(el=>!el.hidden);
+  $('directory').hidden=!!q; $('search-status').hidden=!q; $('clear-search').hidden=!q;
+  $('search-status').textContent=`「${$('search').value.trim()}」：${shown} 條建議、${other} 段其他內容`;
+  $('empty').hidden=!q||shown+other>0;
   document.body.classList.toggle('searching',!!q);
 }
 function clearSearch(){ $('search').value='';clearTimeout(searchTimer);search(); }
 $('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(search,150);});
 $('clear-search').addEventListener('click',()=>{clearSearch();$('search').focus();});
 $('open-toc').addEventListener('click',()=>$('toc-dialog').showModal());
+document.querySelectorAll('[data-open-toc]').forEach(b=>b.addEventListener('click',()=>$('toc-dialog').showModal()));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).close()));
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}}));
 
